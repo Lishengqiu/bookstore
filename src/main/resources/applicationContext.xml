@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!--扫描包-->
+    <context:component-scan base-package="net.qs.service.serviceImpl"/>
+
+    <!--引入外部文件-->
+    <context:property-placeholder location="jdbc.properties"/>
+
+    <!--配置数据源-->
+    <bean class="org.apache.commons.dbcp.BasicDataSource" id="dataSource">
+        <property name="driverClassName" value="${jdbc.driver}"/>
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+
+    <!--注册sqlSessionFactory-->
+    <bean class="org.mybatis.spring.SqlSessionFactoryBean" id="sqlSessionFactory">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="mapperLocations" value="classpath*:mapper/*.xml"/>
+    </bean>
+
+    <!--扫描定义的dao类，向spring容器中注入dao类对象-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer" id="mapperScannerConfigurer">
+        <property name="basePackage" value="net.qs.dao"/>
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+    </bean>
+
+    <!--事务相关控制-->
+    <bean class="org.springframework.jdbc.datasource.DataSourceTransactionManager" id="transactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!--事务处理，默认是transactionManager-->
+    <tx:advice id="interceptor" transaction-manager="transactionManager">
+        <tx:attributes>
+            <!--定义事务处理的方法名，属性，事务失败回滚抛出的异常类-->
+            <tx:method name="delete*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception"/>
+            <tx:method name="update*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception"/>
+            <tx:method name="insert*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception"/>
+            <tx:method name="save*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception"/>
+
+            <tx:method name="select*" propagation="SUPPORTS" read-only="true" rollback-for="java.lang.Exception"/>
+            <tx:method name="get*" propagation="SUPPORTS" read-only="true" rollback-for="java.lang.Exception"/>
+            <tx:method name="find*" propagation="SUPPORTS" read-only="true" rollback-for="java.lang.Exception"/>
+
+            <!--PROPAGATION_REQUIRED - 支持当前事务，如果当前没有事务，就新建一个事务。这是最常见的选择。 
+                PROPAGATION_SUPPORTS - 支持当前事务，如果当前没有事务，就以非事务方式执行。 
+                PROPAGATION_MANDATORY - 支持当前事务，如果当前没有事务，就抛出异常。 
+                PROPAGATION_REQUIRES_NEW - 新建事务，如果当前存在事务，把当前事务挂起。 
+                PROPAGATION_NOT_SUPPORTED - 以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。 
+                PROPAGATION_NEVER - 以非事务方式执行，如果当前存在事务，则抛出异常。 
+                PROPAGATION_NESTED - 如果当前存在事务，则在嵌套事务内执行。
+                如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。-->
+        </tx:attributes>
+    </tx:advice>
+
+    <!--切面控制-->
+    <aop:config>
+        <aop:pointcut id="pointcut" expression="execution(* net.qs.service.*.*(..))"/>
+        <aop:advisor advice-ref="interceptor" pointcut-ref="pointcut"/>
+    </aop:config>
+
+</beans>
